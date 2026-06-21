@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI 找房助手新版高保真交互原型</title>
+  <style>
+    :root {
+      --purple: #7b2cbf;
+      --purple2: #8e44d8;
+      --lavender: #f4eefb;
+      --ink: #201a2f;
+      --muted: #71677f;
+      --line: #eadff4;
+      --shadow: 0 22px 60px rgba(54, 17, 77, .22);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 14% 10%, rgba(142,68,216,.20), transparent 28%),
+        radial-gradient(circle at 84% 14%, rgba(80,192,170,.14), transparent 24%),
+        linear-gradient(135deg, #fbf8ff, #f0e5fb);
+      padding: 28px 18px;
+    }
+    .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 410px 1fr;
+      gap: 34px;
+      align-items: start;
+    }
+    .phone {
+      width: 390px;
+      height: 844px;
+      margin: 0 auto;
+      border-radius: 44px;
+      overflow: hidden;
+      border: 10px solid #171221;
+      box-shadow: var(--shadow);
+      background: #fff;
+      position: sticky;
+      top: 24px;
+    }
+    .screen {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transform: translateX(18px) scale(.992);
+      pointer-events: none;
+      transition: opacity .22s ease, transform .22s ease;
+      background: #fff;
+    }
+    .screen.active {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+      pointer-events: auto;
+    }
+    .screen img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      user-select: none;
+      pointer-events: none;
+    }
+    .hotspot {
+      position: absolute;
+      z-index: 3;
+      border: 0;
+      border-radius: 18px;
+      background: rgba(123,44,191,0);
+      cursor: pointer;
+      font-size: 0;
+    }
+    .hotspot:focus-visible {
+      outline: 3px solid rgba(123,44,191,.55);
+      outline-offset: 2px;
+    }
+    .toast {
+      position: absolute;
+      left: 24px;
+      right: 24px;
+      bottom: 24px;
+      z-index: 10;
+      border-radius: 18px;
+      padding: 12px 14px;
+      background: rgba(32,26,47,.92);
+      color: #fff;
+      font-size: 13px;
+      line-height: 1.4;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity .18s ease, transform .18s ease;
+      pointer-events: none;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .panel {
+      background: rgba(255,255,255,.78);
+      border: 1px solid rgba(234,223,244,.9);
+      border-radius: 26px;
+      box-shadow: 0 12px 30px rgba(68,29,95,.12);
+      padding: 22px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+    p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 14px;
+    }
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .tab-btn,
+    .flow-btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 18px;
+      padding: 12px;
+      color: var(--ink);
+      font-family: inherit;
+      cursor: pointer;
+      text-align: left;
+      box-shadow: 0 6px 14px rgba(68,29,95,.06);
+    }
+    .tab-btn {
+      text-align: center;
+      font-weight: 800;
+      color: var(--muted);
+    }
+    .tab-btn.active {
+      background: linear-gradient(135deg, var(--purple), var(--purple2));
+      color: #fff;
+      border-color: transparent;
+    }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .flow-btn strong {
+      display: block;
+      color: var(--purple);
+      margin-bottom: 4px;
+    }
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0,1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .thumb {
+      border: 0;
+      padding: 0;
+      background: transparent;
+      cursor: pointer;
+      text-align: left;
+      font-family: inherit;
+      color: var(--ink);
+    }
+    .thumb img {
+      width: 100%;
+      aspect-ratio: 9 / 16;
+      object-fit: cover;
+      border-radius: 16px;
+      border: 2px solid transparent;
+      box-shadow: 0 8px 18px rgba(68,29,95,.12);
+      background: #fff;
+      transition: transform .16s ease, border-color .16s ease;
+    }
+    .thumb.active img {
+      border-color: var(--purple);
+      transform: translateY(-3px);
+    }
+    .thumb span {
+      display: block;
+      margin-top: 7px;
+      font-size: 12px;
+      color: #4f455f;
+      font-weight: 700;
+      line-height: 1.35;
+      text-align: center;
+    }
+    .hint {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: #f3e8ff;
+      color: #5f248f;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    @media (max-width: 920px) {
+      body { padding: 18px 12px; }
+      .wrap { grid-template-columns: 1fr; }
+      .phone { position: relative; top: 0; width: min(390px, calc(100vw - 24px)); height: min(844px, calc(100vh - 24px)); min-height: 650px; }
+      .gallery { grid-template-columns: repeat(3, minmax(0,1fr)); }
+      .flow { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="phone" aria-label="新版手机交互原型">
+      <div class="toast" id="toast"></div>
+    </section>
+
+    <aside class="panel">
+      <h1>AI 找房助手新版高保真原型</h1>
+      <p>根据修改清单重新生成：地图筛选、生活服务地图、详情信息层级、收藏夹 AI 对比、标签聚合、他人主页、消息分类、我的页内导航都已加入。</p>
+
+      <div class="tabs" id="tabButtons"></div>
+
+      <div class="flow">
+        <button class="flow-btn" data-go="01"><strong>地图找房</strong>首页 → 筛选 → 服务地图 → 详情</button>
+        <button class="flow-btn" data-go="05"><strong>AI 助手</strong>首页 → 找房 → 收藏对比 → 历史</button>
+        <button class="flow-btn" data-go="09"><strong>社区</strong>首页 → 帖子 → 标签聚合 → 他人主页</button>
+        <button class="flow-btn" data-go="14"><strong>消息</strong>房东 / 私信 / 评论 / 系统</button>
+        <button class="flow-btn" data-go="18"><strong>我的</strong>收藏 / 发布 / AI历史页内切换</button>
+        <button class="flow-btn" data-go="21"><strong>个人资料</strong>点击昵称铅笔进入编辑页</button>
+      </div>
+
+      <div class="hint">交互说明：手机里的大图是新版 GPT 高保真页面，透明热区负责跳转。点击右侧缩略图或手机画面即可演示流程。</div>
+
+      <div class="gallery" id="gallery"></div>
+    </aside>
+  </main>
+
+  <script>
+    const screens = [
+      { id:'01', tab:'地图', title:'地图首页', img:'screens/01_地图首页_新版.png' },
+      { id:'02', tab:'地图', title:'地图筛选', img:'screens/02_地图筛选_新版.png' },
+      { id:'03', tab:'地图', title:'生活服务地图', img:'screens/03_生活服务地图_新版.png' },
+      { id:'04', tab:'地图', title:'房源详情', img:'screens/04_房源详情_新版.png' },
+      { id:'05', tab:'AI助手', title:'AI助手首页', img:'screens/05_AI助手首页_新版.png' },
+      { id:'06', tab:'AI助手', title:'AI找房对话', img:'screens/06_AI找房对话_新版.png' },
+      { id:'07', tab:'AI助手', title:'AI收藏对比', img:'screens/07_AI收藏对比_新版.png' },
+      { id:'08', tab:'AI助手', title:'AI历史对话', img:'screens/08_AI历史对话_新版.png' },
+      { id:'09', tab:'社区', title:'社区首页', img:'screens/09_社区首页_新版.png' },
+      { id:'10', tab:'社区', title:'帖子详情', img:'screens/10_帖子详情_新版.png' },
+      { id:'11', tab:'社区', title:'标签聚合页', img:'screens/11_标签聚合页_新版.png' },
+      { id:'12', tab:'社区', title:'他人主页', img:'screens/12_他人主页_新版.png' },
+      { id:'13', tab:'社区', title:'发布帖子', img:'screens/13_发布帖子_新版.png' },
+      { id:'14', tab:'消息', title:'房东消息', img:'screens/14_消息首页_新版.png' },
+      { id:'15', tab:'消息', title:'用户私信列表', img:'screens/15_用户私信列表_新版.png' },
+      { id:'16', tab:'消息', title:'用户私信聊天', img:'screens/16_用户私信_新版.png' },
+      { id:'17', tab:'消息', title:'评论消息', img:'screens/17_评论系统消息_新版.png' },
+      { id:'18', tab:'我的', title:'我的收藏Tab', img:'screens/18_我的收藏Tab_新版.png' },
+      { id:'19', tab:'我的', title:'我的发布Tab', img:'screens/19_我的发布Tab_新版.png' },
+      { id:'20', tab:'我的', title:'我的AI历史Tab', img:'screens/20_我的AI历史Tab_新版.png' },
+      { id:'21', tab:'我的', title:'个人资料', img:'screens/21_个人资料_新版.png' },
+      { id:'22', tab:'消息', title:'系统消息', img:'screens/22_系统消息_新版.png' },
+      { id:'23', tab:'社区', title:'标签讨论页', img:'screens/23_标签讨论页_新版.png' },
+      { id:'24', tab:'消息', title:'房东私信', img:'screens/24_房东私信_新版.png' }
+    ];
+
+    const hot = {
+      '01': [
+        ['02', 72, 53, 20, 8, '筛选房源'],
+        ['03', 5, 16, 90, 30, '展开生活服务地图'],
+        ['04', 5, 62, 90, 20, '打开房源详情'],
+        ['09', 20, 91, 16, 8, '社区'],
+        ['05', 38, 91, 18, 8, 'AI助手'],
+        ['14', 58, 91, 16, 8, '消息'],
+        ['18', 76, 91, 18, 8, '我的']
+      ],
+      '02': [
+        ['01', 4, 3, 12, 8, '返回地图'],
+        ['01', 10, 83, 80, 9, '查看筛选结果']
+      ],
+      '03': [
+        ['01', 4, 3, 12, 8, '返回地图'],
+        ['04', 8, 78, 84, 12, '查看房源']
+      ],
+      '04': [
+        ['01', 4, 3, 12, 8, '返回地图'],
+        ['05', 5, 87, 34, 10, '问AI'],
+        ['15', 42, 87, 52, 10, '联系房东']
+      ],
+      '05': [
+        ['08', 84, 3, 12, 8, 'AI历史'],
+        ['06', 7, 31, 86, 22, '开始匹配'],
+        ['07', 7, 55, 86, 22, '选择收藏房源'],
+        ['01', 2, 91, 16, 8, '地图'],
+        ['09', 20, 91, 16, 8, '社区'],
+        ['14', 58, 91, 16, 8, '消息'],
+        ['18', 76, 91, 18, 8, '我的']
+      ],
+      '06': [
+        ['08', 84, 3, 12, 8, 'AI历史'],
+        ['01', 8, 78, 34, 8, '查看地图'],
+        ['04', 46, 78, 46, 8, '查看详情']
+      ],
+      '07': [
+        ['05', 4, 3, 12, 8, '返回AI'],
+        ['04', 8, 78, 34, 8, '查看详情'],
+        ['15', 46, 78, 46, 8, '联系房东']
+      ],
+      '08': [
+        ['05', 4, 3, 12, 8, '返回AI'],
+        ['06', 5, 24, 90, 16, '打开找房历史'],
+        ['07', 5, 42, 90, 16, '打开收藏对比历史']
+      ],
+      '09': [
+        ['12', 5, 20, 16, 10, '进入他人主页'],
+        ['10', 5, 24, 90, 27, '打开帖子详情'],
+        ['13', 76, 80, 18, 10, '发布帖子'],
+        ['01', 2, 91, 16, 8, '地图'],
+        ['05', 38, 91, 18, 8, 'AI助手'],
+        ['14', 58, 91, 16, 8, '消息'],
+        ['18', 76, 91, 18, 8, '我的']
+      ],
+      '10': [
+        ['09', 4, 3, 12, 8, '返回社区'],
+        ['12', 5, 11, 16, 8, '进入他人主页'],
+        ['11', 6, 53, 24, 10, '无车党标签'],
+        ['17', 7, 88, 86, 8, '评论消息']
+      ],
+      '11': [
+        ['10', 4, 3, 12, 8, '返回帖子'],
+        ['11', 18, 11, 32, 9, '房源'],
+        ['23', 50, 11, 32, 9, '讨论'],
+        ['04', 5, 28, 90, 54, '打开相关房源']
+      ],
+      '23': [
+        ['10', 4, 3, 12, 8, '返回帖子'],
+        ['11', 18, 11, 32, 9, '房源'],
+        ['23', 50, 11, 32, 9, '讨论'],
+        ['10', 5, 26, 90, 24, '打开讨论帖子'],
+        ['12', 5, 26, 18, 10, '进入他人主页']
+      ],
+      '12': [
+        ['09', 4, 3, 12, 8, '返回社区'],
+        ['16', 52, 28, 40, 8, '私信用户'],
+        ['10', 5, 48, 90, 20, '打开发布帖子']
+      ],
+      '13': [
+        ['09', 4, 3, 16, 8, '取消发布'],
+        ['09', 74, 3, 20, 8, '发布完成']
+      ],
+      '14': [
+        ['14', 4, 15, 22, 8, '房东消息'],
+        ['15', 27, 15, 22, 8, '用户私信'],
+        ['17', 50, 15, 22, 8, '评论消息'],
+        ['22', 73, 15, 22, 8, '系统消息'],
+        ['24', 5, 28, 90, 18, '打开房东私信']
+      ],
+      '15': [
+        ['14', 4, 15, 22, 8, '房东消息'],
+        ['15', 27, 15, 22, 8, '用户私信'],
+        ['17', 50, 15, 22, 8, '评论消息'],
+        ['22', 73, 15, 22, 8, '系统消息'],
+        ['16', 5, 28, 90, 18, '打开Campus_Life私信']
+      ],
+      '16': [
+        ['14', 4, 3, 12, 8, '返回消息'],
+        ['12', 10, 11, 80, 10, '查看主页']
+      ],
+      '24': [
+        ['14', 4, 3, 12, 8, '返回房东消息'],
+        ['04', 8, 12, 84, 10, '查看房源'],
+        ['05', 10, 67, 80, 10, 'AI建议']
+      ],
+      '17': [
+        ['14', 4, 15, 22, 8, '房东消息'],
+        ['15', 27, 15, 22, 8, '用户私信'],
+        ['17', 50, 15, 22, 8, '评论消息'],
+        ['22', 73, 15, 22, 8, '系统消息'],
+        ['10', 8, 25, 84, 12, '查看帖子'],
+        ['10', 8, 45, 84, 12, '查看帖子']
+      ],
+      '22': [
+        ['14', 4, 15, 22, 8, '房东消息'],
+        ['15', 27, 15, 22, 8, '用户私信'],
+        ['17', 50, 15, 22, 8, '评论消息'],
+        ['22', 73, 15, 22, 8, '系统消息'],
+        ['04', 8, 28, 84, 12, '查看房源'],
+        ['07', 8, 44, 84, 12, '查看报告']
+      ],
+      '18': [
+        ['21', 34, 13, 38, 12, '编辑资料'],
+        ['18', 3, 28, 31, 18, '收藏Tab'],
+        ['19', 34, 28, 32, 18, '发布帖子Tab'],
+        ['20', 66, 28, 31, 18, 'AI历史Tab'],
+        ['04', 5, 47, 90, 18, '查看收藏房源'],
+        ['05', 58, 47, 34, 8, '问AI'],
+        ['01', 2, 91, 16, 8, '地图'],
+        ['09', 20, 91, 16, 8, '社区'],
+        ['05', 38, 91, 18, 8, 'AI助手'],
+        ['14', 58, 91, 16, 8, '消息']
+      ],
+      '19': [
+        ['21', 34, 13, 38, 12, '编辑资料'],
+        ['18', 3, 28, 31, 18, '收藏Tab'],
+        ['19', 34, 28, 32, 18, '发布帖子Tab'],
+        ['20', 66, 28, 31, 18, 'AI历史Tab'],
+        ['10', 5, 48, 90, 18, '打开我的帖子']
+      ],
+      '20': [
+        ['21', 34, 13, 38, 12, '编辑资料'],
+        ['18', 3, 28, 31, 18, '收藏Tab'],
+        ['19', 34, 28, 32, 18, '发布帖子Tab'],
+        ['20', 66, 28, 31, 18, 'AI历史Tab'],
+        ['08', 5, 48, 90, 16, '打开AI历史']
+      ],
+      '21': [
+        ['18', 4, 3, 12, 8, '返回我的'],
+        ['18', 10, 84, 80, 8, '保存资料']
+      ]
+    };
+
+    const bottomNav = [
+      ['01', 2, 91, 16, 8, '地图'],
+      ['09', 20, 91, 16, 8, '社区'],
+      ['05', 38, 91, 18, 8, 'AI助手'],
+      ['14', 58, 91, 16, 8, '消息'],
+      ['18', 76, 91, 18, 8, '我的']
+    ];
+
+    const phone = document.querySelector('.phone');
+    const gallery = document.querySelector('#gallery');
+    const tabButtons = document.querySelector('#tabButtons');
+    const toast = document.querySelector('#toast');
+    let toastTimer = null;
+
+    function showToast(text) {
+      toast.textContent = text;
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 1600);
+    }
+
+    function makeScreen(screen) {
+      const article = document.createElement('article');
+      article.className = 'screen';
+      article.id = `screen-${screen.id}`;
+      article.innerHTML = `<img src="${screen.img}" alt="${screen.title}">`;
+      const pageHotspots = [...(hot[screen.id] || []), ...bottomNav];
+      pageHotspots.forEach(([go, x, y, w, h, label]) => {
+        const btn = document.createElement('button');
+        btn.className = 'hotspot';
+        btn.style.left = `${x}%`;
+        btn.style.top = `${y}%`;
+        btn.style.width = `${w}%`;
+        btn.style.height = `${h}%`;
+        btn.setAttribute('aria-label', label);
+        btn.addEventListener('click', () => {
+          goTo(go);
+          showToast(label);
+        });
+        article.appendChild(btn);
+      });
+      phone.appendChild(article);
+    }
+
+    function makeThumb(screen) {
+      const btn = document.createElement('button');
+      btn.className = 'thumb';
+      btn.dataset.id = screen.id;
+      btn.innerHTML = `<img src="${screen.img}" alt="${screen.title}"><span>${screen.id}. ${screen.title}</span>`;
+      btn.addEventListener('click', () => goTo(screen.id));
+      gallery.appendChild(btn);
+    }
+
+    function makeTabs() {
+      ['地图','社区','AI助手','消息','我的'].forEach(tab => {
+        const btn = document.createElement('button');
+        btn.className = 'tab-btn';
+        btn.textContent = tab;
+        const first = screens.find(s => s.tab === tab);
+        btn.addEventListener('click', () => goTo(first.id));
+        tabButtons.appendChild(btn);
+      });
+    }
+
+    function goTo(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === `screen-${id}`));
+      document.querySelectorAll('.thumb').forEach(t => t.classList.toggle('active', t.dataset.id === id));
+      const current = screens.find(s => s.id === id);
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.textContent === current.tab));
+    }
+
+    screens.forEach(screen => {
+      makeScreen(screen);
+      makeThumb(screen);
+    });
+    ['18', '19', '20'].forEach(id => {
+      const screen = document.querySelector(`#screen-${id}`);
+      screen.addEventListener('click', event => {
+        const rect = screen.getBoundingClientRect();
+        const x = ((event.clientX - rect.left) / rect.width) * 100;
+        const y = ((event.clientY - rect.top) / rect.height) * 100;
+        if (y < 27 || y > 47) return;
+        if (x < 34) goTo('18');
+        else if (x < 66) goTo('19');
+        else goTo('20');
+      });
+    });
+    makeTabs();
+    document.querySelectorAll('.flow-btn').forEach(btn => btn.addEventListener('click', () => goTo(btn.dataset.go)));
+    goTo('01');
+  </script>
+</body>
+</html>
